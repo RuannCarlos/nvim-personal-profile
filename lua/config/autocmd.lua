@@ -2,7 +2,15 @@
 vim.api.nvim_create_autocmd("TextYankPost", {
   pattern = "*",
   callback = function()
-    vim.highlight.on_yank({ timeout = 300 })
+    vim.hl.on_yank({ timeout = 300 })
+  end,
+})
+
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = { 'markdown' },
+  callback = function(args)
+    vim.wo.conceallevel = 2
+    vim.wo.concealcursor = 'nc'
   end,
 })
 
@@ -43,4 +51,4 @@ do
   })
 end
 
-vim.cmd.colorschem 'tokyonight-night'
+vim.cmd.colorscheme 'tokyonight-night'

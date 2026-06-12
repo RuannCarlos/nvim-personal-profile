@@ -1,7 +1,6 @@
 require('config.remap')
+require('config.options')
 require('plugins.plugins')
 require('config.lsp')
---require('config.lazy')
 require('config.autocmd')
 require('config.mappings')
-require('config.options')

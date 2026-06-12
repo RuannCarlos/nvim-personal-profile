@@ -21,6 +21,19 @@ do
 			topdelete = { text = "‾" }, --@diagnostic disable-line: missing-fields
 			changedelete = { text = "~" }, --@diagnostic disable-line: missing-fields
 		},
+		on_attach = function(bufnr)
+			local gs = require('gitsigns')
+			local function map(mode, lhs, rhs, desc)
+				vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, desc = desc, silent = true })
+			end
+
+			map('n', ']c', gs.next_hunk, 'Next hunk')
+			map('n', '[c', gs.prev_hunk, 'Previous hunk')
+			map({ 'n', 'v' }, '<leader>hs', gs.stage_hunk, '[H]unk [S]tage')
+			map({ 'n', 'v' }, '<leader>hr', gs.reset_hunk, '[H]unk [R]eset')
+			map('n', '<leader>hp', gs.preview_hunk, '[H]unk [P]review')
+			map('n', '<leader>hb', gs.blame_line, '[H]unk [B]lame')
+		end,
 	}
 	vim.pack.add { gh 'folke/which-key.nvim' }
 	require('which-key').setup {
@@ -33,18 +46,12 @@ do
 			{ '<leader>f', group = '[F]ormat',    mode = { 'n' } },
 			{ '<leader>p', group = '[P]roject',   mode = { 'n' } },
 			{ '<leader>t', group = '[T]oggle' },
+			{ '<leader>a', group = '[A]I' },
+			{ '<leader>g', group = '[G]it' },
 			{ '<leader>h', group = 'Git [H]unk',  mode = { 'n', 'v' } }, -- Enable gitsigns recommended keymaps first
 			{ 'gr',        group = 'LSP Actions', mode = { 'n' } },
 		},
 	}
-	require("which-key").add({
-		{ "<leader>s", group = "[S]earch" },
-		{ "<leader>f", group = "[F]ormat" },
-		{ "<leader>p", group = "[P]roject" },
-		{ "<leader>t", group = "[T]oggle" },
-		{ "<leader>h", group = "Git [H]unk" },
-		{ "gr",        group = "LSP Actions" },
-	})
 
 	vim.pack.add { gh 'folke/todo-comments.nvim' }
 	require('todo-comments').setup { signs = false }
@@ -77,13 +84,28 @@ do
 		}
 	})
 
+	vim.pack.add { gh 'nvim-treesitter/nvim-treesitter' }
+	vim.api.nvim_create_autocmd('FileType', {
+		group = vim.api.nvim_create_augroup('config-treesitter-filetype', { clear = true }),
+		callback = function(args)
+			local buf, filetype = args.buf, args.match
+			local language = vim.treesitter.language.get_lang(filetype)
+			if not language then
+				return
+			end
+			if not vim.treesitter.language.add(language) then
+				return
+			end
+
+			vim.treesitter.start(buf, language)
+			vim.bo[buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+		end,
+	})
+
 	-- Visual
 	vim.pack.add { gh 'folke/tokyonight.nvim' }
 	---@diagnostic disable-next-line: missing-fields
 	require('tokyonight').setup {}
-
-	vim.pack.add { gh 'folke/todo-comments.nvim' }
-	require('todo-comments').setup {}
 
 	vim.pack.add {
 		{ src = 'https://github.com/neovim/nvim-lspconfig' },
