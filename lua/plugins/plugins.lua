@@ -66,7 +66,21 @@ do
 		n_lines = 500,
 	}
 
+	require('mini.pairs').setup {
+		mappings = {
+			['('] = { action = 'open', pair = '()', neigh_pattern = '[^\\].' },
+			['['] = { action = 'open', pair = '[]', neigh_pattern = '[^%].' },
+			['{'] = { action = 'open', pair = '{}', neigh_pattern = '[^%].' },
+			['"'] = { action = 'open', pair = '""', neigh_pattern = '[^\\].', register = { cr = false } },
+			["'"] = { action = 'open', pair = "''", neigh_pattern = '[^\\].', register = { cr = false } },
+			['`'] = { action = 'open', pair = '``', neigh_pattern = '[^\\].', register = { cr = false } },
+		},
+	}
+
 	require('mini.surround').setup()
+	require('mini.icons').setup()
+	require('mini.snippets').setup()
+
 
 	local statusline = require 'mini.statusline'
 	statusline.setup { use_icons = vim.g.have_nerd_font }
@@ -85,22 +99,6 @@ do
 	})
 
 	vim.pack.add { gh 'nvim-treesitter/nvim-treesitter' }
-	vim.api.nvim_create_autocmd('FileType', {
-		group = vim.api.nvim_create_augroup('config-treesitter-filetype', { clear = true }),
-		callback = function(args)
-			local buf, filetype = args.buf, args.match
-			local language = vim.treesitter.language.get_lang(filetype)
-			if not language then
-				return
-			end
-			if not vim.treesitter.language.add(language) then
-				return
-			end
-
-			vim.treesitter.start(buf, language)
-			vim.bo[buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
-		end,
-	})
 
 	-- Visual
 	vim.pack.add { gh 'folke/tokyonight.nvim' }

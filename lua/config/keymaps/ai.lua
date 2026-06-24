@@ -30,4 +30,41 @@ local function toggle_agent()
 	vim.cmd.startinsert()
 end
 
+local function open_in_cursor(opts)
+	opts = opts or {}
+	local file = vim.fn.expand('%:p')
+	if file == '' then
+		vim.notify('No file to open in Cursor', vim.log.levels.ERROR)
+		return
+	end
+
+	local line = vim.fn.line('.')
+	local col = vim.fn.col('.')
+	local dir = vim.fn.expand('%:p:h')
+	local git_root = vim.fn.system(
+		'git -C ' .. vim.fn.shellescape(dir) .. ' rev-parse --show-toplevel 2>/dev/null'
+	):gsub('\n', '')
+	if vim.v.shell_error ~= 0 then
+		git_root = dir
+	end
+
+	local args = {}
+	if opts.new_window then
+		table.insert(args, '-n')
+	else
+		table.insert(args, '-r')
+	end
+	table.insert(args, vim.fn.shellescape(git_root))
+	table.insert(args, '-g')
+	table.insert(args, vim.fn.shellescape(string.format('%s:%d:%d', file, line, col)))
+
+	vim.fn.jobstart('cursor ' .. table.concat(args, ' '), { detach = true })
+end
+
 map('n', '<leader>aw', toggle_agent, { desc = '[A]I Toggle [W]indow' })
+map('n', '<leader>ac', function()
+	open_in_cursor()
+end, { desc = 'Open in [C]ursor (reuse window)' })
+map('n', '<leader>aC', function()
+	open_in_cursor({ new_window = true })
+end, { desc = 'Open in [C]ursor (new window)' })

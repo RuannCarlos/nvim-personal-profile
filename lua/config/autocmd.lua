@@ -44,7 +44,7 @@ do
 
       if name == 'nvim-treesitter' then
         if not ev.data.active then vim.cmd.packadd 'nvim-treesitter' end
-        vim.cmd 'TSUpdate'
+        require('config.treesitter').setup()
         return
       end
     end,

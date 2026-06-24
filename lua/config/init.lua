@@ -1,6 +1,8 @@
 require('config.remap')
 require('config.options')
+require('config.filetypes').setup()
 require('plugins.plugins')
+require('config.treesitter').setup()
 require('config.lsp')
 require('config.autocmd')
 require('config.mappings')
