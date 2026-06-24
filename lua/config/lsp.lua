@@ -196,6 +196,42 @@ end
 
 vim.lsp.enable(vim.tbl_keys(servers))
 
+--- gopls (and most servers) only advertise "." as a trigger character, so
+--- autocompletion would never fire while typing identifiers without this.
+---@param client vim.lsp.Client
+local function extend_completion_triggers(client)
+	local provider = vim.tbl_get(client, 'server_capabilities', 'completionProvider')
+	if not provider then
+		return
+	end
+
+	local triggers = vim.list_extend({}, provider.triggerCharacters or {})
+	local seen = {}
+	for _, c in ipairs(triggers) do
+		seen[c] = true
+	end
+
+	local function add(char)
+		if not seen[char] then
+			triggers[#triggers + 1] = char
+			seen[char] = true
+		end
+	end
+
+	for code = 48, 57 do
+		add(string.char(code))
+	end
+	for code = 65, 90 do
+		add(string.char(code))
+	end
+	for code = 97, 122 do
+		add(string.char(code))
+	end
+	add('_')
+
+	provider.triggerCharacters = triggers
+end
+
 vim.api.nvim_create_autocmd('LspAttach', {
 	group = vim.api.nvim_create_augroup('config-lsp-attach', { clear = true }),
 	callback = function(ev)
@@ -206,6 +242,7 @@ vim.api.nvim_create_autocmd('LspAttach', {
 		end
 
 		if client:supports_method('textDocument/completion') then
+			extend_completion_triggers(client)
 			-- Built-in completion expands LSP snippets (e.g. func() with cursor inside).
 			vim.lsp.completion.enable(true, client.id, bufnr, { autotrigger = true })
 		end
@@ -272,4 +309,8 @@ vim.api.nvim_create_autocmd('BufWritePre', {
 	end,
 })
 
-vim.opt.completeopt = { 'menu', 'menuone', 'noselect', 'preview' }
+vim.opt.completeopt = { 'menu', 'menuone', 'noselect', 'popup' }
+
+vim.keymap.set('i', '<C-Space>', function()
+	vim.lsp.completion.get()
+end, { desc = 'Trigger LSP completion' })
