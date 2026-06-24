@@ -42,6 +42,12 @@ do
         return
       end
 
+      if name == 'mason.nvim' then
+        if not ev.data.active then vim.cmd.packadd 'mason.nvim' end
+        require('config.mason').setup()
+        return
+      end
+
       if name == 'nvim-treesitter' then
         if not ev.data.active then vim.cmd.packadd 'nvim-treesitter' end
         require('config.treesitter').setup()
@@ -50,5 +56,12 @@ do
     end,
   })
 end
+
+vim.api.nvim_create_autocmd('VimEnter', {
+  once = true,
+  callback = function()
+    require('config.mason').setup()
+  end,
+})
 
 vim.cmd.colorscheme 'tokyonight-night'

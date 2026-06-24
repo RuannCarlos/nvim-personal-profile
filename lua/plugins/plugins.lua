@@ -87,16 +87,7 @@ do
 
 	statusline.section_location = function() return '%21:%-2v' end
 	vim.pack.add { gh 'mason-org/mason.nvim' }
-
-	require "mason".setup({
-		ui = {
-			icons = {
-				package_installed = "✓",
-				package_pending = "➜",
-				package_uninstalled = "✗"
-			}
-		}
-	})
+	require('config.mason').setup()
 
 	vim.pack.add { gh 'nvim-treesitter/nvim-treesitter' }
 

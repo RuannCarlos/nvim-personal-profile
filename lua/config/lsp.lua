@@ -71,42 +71,7 @@ local terraform_root_markers = {
 	'account.tfvars',
 }
 
---- Mason packages matching the LSP servers below.
----@type string[]
-local mason_packages = {
-	'gopls',
-	'lua-language-server',
-	'yaml-language-server',
-	'rust-analyzer',
-	'json-lsp',
-	'bash-language-server',
-	'docker-language-server',
-	'pyright',
-	'taplo',
-	'typescript-language-server',
-	'terraform-ls',
-	'tflint',
-	'tree-sitter-cli',
-}
-
-local function ensure_mason_packages()
-	local ok, registry = pcall(require, 'mason-registry')
-	if not ok then
-		return
-	end
-
-	vim.schedule(function()
-		for _, name in ipairs(mason_packages) do
-			local pkg_ok, pkg = pcall(registry.get_package, name)
-			if pkg_ok and not pkg:is_installed() then
-				vim.notify(('Installing Mason package: %s'):format(name), vim.log.levels.INFO)
-				pcall(pkg.install, pkg)
-			end
-		end
-	end)
-end
-
-ensure_mason_packages()
+--- Mason packages are installed by config.mason (see plugins/plugins.lua).
 
 ---@type table<string, vim.lsp.Config>
 local servers = {
