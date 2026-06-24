@@ -1,14 +1,62 @@
 --- Native Neovim LSP setup for DevOps-oriented languages.
 local mason_bin = vim.fs.joinpath(vim.fn.stdpath('data'), 'mason', 'bin')
 
-local function mason_bin_on_path()
-	local path = vim.env.PATH or ''
-	if vim.uv.fs_stat(mason_bin) and not path:find(vim.pesc(mason_bin), 1, true) then
-		vim.env.PATH = mason_bin .. ':' .. path
+local function go_bin_dir()
+	if vim.fn.executable('go') == 1 then
+		local out = vim.trim(vim.fn.system({ 'go', 'env', 'GOBIN' }) or '')
+		if vim.v.shell_error == 0 and out ~= '' then
+			return out
+		end
+	end
+	local gopath = vim.env.GOPATH or vim.fs.joinpath(vim.fn.expand('~'), 'go')
+	return vim.fs.joinpath(gopath, 'bin')
+end
+
+local function go_toolchain_bin()
+	if vim.fn.executable('go') == 1 then
+		local goroot = vim.trim(vim.fn.system({ 'go', 'env', 'GOROOT' }) or '')
+		if vim.v.shell_error == 0 and goroot ~= '' then
+			return vim.fs.joinpath(goroot, 'bin')
+		end
+	end
+	if vim.env.GOROOT and vim.env.GOROOT ~= '' then
+		local dir = vim.fs.joinpath(vim.env.GOROOT, 'bin')
+		if vim.uv.fs_stat(vim.fs.joinpath(dir, 'go')) then
+			return dir
+		end
+	end
+	local fallback = '/usr/local/go/bin'
+	if vim.uv.fs_stat(vim.fs.joinpath(fallback, 'go')) then
+		return fallback
 	end
 end
 
-mason_bin_on_path()
+local function prepend_path(dir)
+	if not dir or dir == '' or not vim.uv.fs_stat(dir) then
+		return
+	end
+	local path = vim.env.PATH or ''
+	if not path:find(vim.pesc(dir), 1, true) then
+		vim.env.PATH = dir .. ':' .. path
+	end
+end
+
+prepend_path(mason_bin)
+prepend_path(go_toolchain_bin())
+prepend_path(go_bin_dir())
+
+--- Resolve an LSP executable: Mason bin first, then PATH (includes ~/go/bin).
+---@param executable string
+---@param ... string
+---@return string[]
+local function lsp_cmd(executable, ...)
+	local args = { ... }
+	local mason_exe = vim.fs.joinpath(mason_bin, executable)
+	if vim.uv.fs_stat(mason_exe) then
+		return vim.list_extend({ mason_exe }, args)
+	end
+	return vim.list_extend({ executable }, args)
+end
 
 ---@type string[]
 local terraform_filetypes = { 'terraform', 'terraform-vars', 'tf' }
@@ -23,8 +71,11 @@ local terraform_root_markers = {
 	'account.tfvars',
 }
 
+--- Mason packages matching the LSP servers below.
 ---@type string[]
 local mason_packages = {
+	'gopls',
+	'lua-language-server',
 	'yaml-language-server',
 	'rust-analyzer',
 	'json-lsp',
@@ -33,6 +84,7 @@ local mason_packages = {
 	'pyright',
 	'taplo',
 	'typescript-language-server',
+	'terraform-ls',
 	'tflint',
 	'tree-sitter-cli',
 }
@@ -59,24 +111,26 @@ ensure_mason_packages()
 ---@type table<string, vim.lsp.Config>
 local servers = {
 	lua_ls = {
-		cmd = { 'lua-language-server' },
+		cmd = lsp_cmd('lua-language-server'),
 		filetypes = { 'lua' },
-		root_markers = { '.git' },
+		root_markers = { '.git', '.luarc.json', 'stylua.toml' },
 		settings = {
 			Lua = {
 				runtime = { version = 'LuaJIT' },
+				diagnostics = { globals = { 'vim' } },
 				workspace = {
 					library = vim.api.nvim_get_runtime_file('', true),
 					checkThirdParty = false,
 				},
+				telemetry = { enable = false },
 			},
 		},
 	},
 
 	gopls = {
-		cmd = { 'gopls' },
+		cmd = lsp_cmd('gopls'),
 		filetypes = { 'go', 'gomod', 'gowork', 'gotmpl' },
-		root_markers = { 'go.mod', 'go.work', '.git' },
+		root_markers = { 'go.work', 'go.mod', '.git' },
 		settings = {
 			gopls = {
 				analyses = { unusedparams = true },
@@ -88,7 +142,7 @@ local servers = {
 	},
 
 	yamlls = {
-		cmd = { 'yaml-language-server', '--stdio' },
+		cmd = lsp_cmd('yaml-language-server', '--stdio'),
 		filetypes = { 'yaml', 'yaml.docker-compose', 'yaml.gitlab' },
 		root_markers = { '.git' },
 		settings = {
@@ -106,13 +160,13 @@ local servers = {
 	},
 
 	rust_analyzer = {
-		cmd = { 'rust-analyzer' },
+		cmd = lsp_cmd('rust-analyzer'),
 		filetypes = { 'rust' },
 		root_markers = { 'Cargo.toml', 'Cargo.lock', '.git' },
 	},
 
 	jsonls = {
-		cmd = { 'vscode-json-language-server', '--stdio' },
+		cmd = lsp_cmd('vscode-json-language-server', '--stdio'),
 		filetypes = { 'json', 'jsonc' },
 		root_markers = { '.git' },
 		settings = {
@@ -124,48 +178,48 @@ local servers = {
 	},
 
 	bashls = {
-		cmd = { 'bash-language-server', 'start' },
+		cmd = lsp_cmd('bash-language-server', 'start'),
 		filetypes = { 'sh', 'bash' },
 		root_markers = { '.git' },
 	},
 
 	dockerls = {
-		cmd = { 'docker-language-server', 'start', '--stdio' },
+		cmd = lsp_cmd('docker-language-server', 'start', '--stdio'),
 		filetypes = { 'dockerfile' },
 		root_markers = { 'Dockerfile', '.git' },
 	},
 
 	pyright = {
-		cmd = { 'pyright-langserver', '--stdio' },
+		cmd = lsp_cmd('pyright-langserver', '--stdio'),
 		filetypes = { 'python' },
-		root_markers = { 'pyproject.toml', 'setup.py', 'requirements.txt', '.git' },
+		root_markers = { 'pyproject.toml', 'setup.py', 'setup.cfg', 'requirements.txt', '.git' },
 	},
 
 	taplo = {
-		cmd = { 'taplo', 'lsp', 'stdio' },
+		cmd = lsp_cmd('taplo', 'lsp', 'stdio'),
 		filetypes = { 'toml' },
 		root_markers = { '.git' },
 	},
 
 	ts_ls = {
-		cmd = { 'typescript-language-server', '--stdio' },
+		cmd = lsp_cmd('typescript-language-server', '--stdio'),
 		filetypes = {
 			'javascript',
 			'javascriptreact',
 			'typescript',
 			'typescriptreact',
 		},
-		root_markers = { 'package.json', 'tsconfig.json', '.git' },
+		root_markers = { 'package.json', 'tsconfig.json', 'jsconfig.json', '.git' },
 	},
 
 	terraform_ls = {
-		cmd = { 'terraform-ls', 'serve' },
+		cmd = lsp_cmd('terraform-ls', 'serve'),
 		filetypes = terraform_filetypes,
 		root_markers = terraform_root_markers,
 	},
 
 	tflint = {
-		cmd = { 'tflint', '--langserver' },
+		cmd = lsp_cmd('tflint', '--langserver'),
 		filetypes = terraform_filetypes,
 		root_markers = vim.list_extend({ '.tflint.hcl' }, terraform_root_markers),
 	},

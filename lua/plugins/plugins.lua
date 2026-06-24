@@ -105,10 +105,6 @@ do
 	---@diagnostic disable-next-line: missing-fields
 	require('tokyonight').setup {}
 
-	vim.pack.add {
-		{ src = 'https://github.com/neovim/nvim-lspconfig' },
-	}
-
 	--- Git
 	---
 	vim.pack.add { gh 'tpope/vim-fugitive' }
